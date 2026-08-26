@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light Mode Base Styles */
+@layer base {
+  :root {
+    --neon-pink: #ff1493;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-slate-900 font-sans antialiased overflow-x-hidden;
+  }
+
+  ::selection {
+    @apply bg-neon-pink/20 text-slate-900;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neon-pink/50;
+  }
+}
+
+/* Component Styles */
+@layer components {
+
+  /* Product Card */
+  .product-card {
+    @apply bg-white rounded-2xl overflow-hidden transition-all duration-300;
+    @apply border border-slate-100 hover:border-neon-pink/20;
+    @apply hover:shadow-neon-glow;
+  }
+
+  /* Primary Button */
+  .btn-primary {
+    @apply bg-neon-pink text-white font-semibold px-6 py-3 rounded-lg;
+    @apply transition-all duration-200;
+    @apply hover:bg-neon-pink-600 hover:scale-105 hover:shadow-neon-glow-sm;
+  }
+
+  /* Outline Button */
+  .btn-outline {
+    @apply bg-transparent text-neon-pink border-2 border-neon-pink font-semibold px-6 py-3 rounded-lg;
+    @apply transition-all duration-200;
+    @apply hover:bg-neon-pink hover:text-white hover:scale-105;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply bg-transparent text-slate-700 font-medium px-4 py-2 rounded-lg;
+    @apply transition-all duration-200;
+    @apply hover:bg-slate-100 hover:text-neon-pink;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full;
+  }
+
+  .badge-pink {
+    @apply bg-neon-pink text-white;
+  }
+
+  .badge-sale {
+    @apply bg-red-500 text-white;
+  }
+
+  .badge-new {
+    @apply bg-emerald-500 text-white;
+  }
+
+  /* Skeleton Loading */
+  .skeleton {
+    @apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* Section Title */
+  .section-title {
+    @apply text-xl sm:text-2xl md:text-3xl font-display font-bold text-slate-900;
+  }
+
+  /* Category Circle */
+  .category-circle {
+    @apply relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden;
+    @apply border-2 border-transparent transition-all duration-300;
+    @apply hover:border-neon-pink hover:scale-105;
+  }
+
+  /* Tab Button */
+  .tab-btn {
+    @apply px-6 py-3 font-semibold text-slate-500 transition-all duration-200;
+    @apply border-b-2 border-transparent;
+    @apply hover:text-neon-pink;
+  }
+
+  .tab-btn.active {
+    @apply text-neon-pink border-neon-pink;
+  }
+
+  /* Input Field */
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg;
+    @apply text-slate-900 placeholder-slate-400;
+    @apply transition-all duration-200;
+    @apply focus:border-neon-pink focus:ring-2 focus:ring-neon-pink/20 focus:outline-none;
+  }
+
+  /* Search Bar */
+  .search-bar {
+    @apply flex items-center gap-3 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full;
+    @apply transition-all duration-200;
+    @apply focus-within:border-neon-pink focus-within:bg-white focus-within:shadow-sm;
+  }
+}
+
+/* Utility Classes */
+@layer utilities {
+
+  /* Neon Underline */
+  .neon-underline {
+    @apply relative;
+  }
+
+  .neon-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-neon-pink transition-all duration-300;
+  }
+
+  .neon-underline:hover::after {
+    @apply w-full;
+  }
+
+  /* Grayscale to Color */
+  .grayscale-hover {
+    @apply grayscale transition-all duration-300;
+  }
+
+  .grayscale-hover:hover {
+    @apply grayscale-0;
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Shimmer Animation for Skeleton Loading */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

@@ -1,0 +1,118 @@
+You are integrating Worldpay Hosted Payment Pages (HPP) into this Next.js + Node project.
+
+Goal:
+- Dynamic payments: backend creates an HPP session per checkout attempt and returns a redirect URL.
+- Frontend redirects user to HPP.
+- Backend is the source of truth using webhooks (not the redirect page).
+- UX: success page is “Confirming payment…” and polls backend until it becomes PAID or FAILED.
+
+Constraints:
+- Do NOT put Worldpay credentials in the browser.
+- Use Basic Auth credentials (username/password) from Worldpay dashboard (API Credentials) and merchant entity PO4089899937.
+- Use Try environment initially: https://try.access.worldpay.com
+- Use the headers:
+  Content-Type: application/vnd.worldpay.payment_pages-v1.hal+json
+  Accept: application/vnd.worldpay.payment_pages-v1.hal+json
+
+Implement the following pieces:
+
+1) Environment variables
+- WORLDPAY_BASE_URL (default: https://access.worldpay.com)
+- WORLDPAY_USERNAME (set to bIkMacKyu37l6gVp)
+- WORLDPAY_PASSWORD (set to NYVOyQJ6ddhfUjXZMnweIW8wjk6jCghFdDuVwDZgTorhoc4K2mj7xrjjgbKr4sgW)
+- WORLDPAY_ENTITY (set to PO4089899937)
+- APP_BASE_URL (e.g., http://localhost:3000)
+
+2) Data model / persistence
+If the project already has a DB, add tables/collections:
+- Order: id, status (PENDING_PAYMENT, PAID, PAYMENT_FAILED, CANCELLED), totalAmountMinor, currency, createdAt
+- PaymentAttempt: id, orderId, transactionReference (unique), status (INITIATED, HPP_SESSION_CREATED, PROCESSING, AUTHORIZED, PAID, FAILED, CANCELLED, EXPIRED, ERROR), worldpayUrl, lastEventType, lastEventAt, createdAt
+- WebhookEventLog: eventId (unique), transactionReference, type, timestamp, rawPayload
+
+If there’s no DB yet, implement a minimal in-memory store for local dev but keep interfaces clean so it can be swapped to DB.
+
+3) Backend endpoints (Node / Next API routes)
+A) POST /api/payments/worldpay/session
+Input: orderId (or cart payload if you don’t have orders yet)
+Behavior:
+- Validate order server-side (amount/currency)
+- Create PaymentAttempt with unique transactionReference tied to orderId
+- Call Worldpay:
+  POST {WORLDPAY_BASE_URL}/payment_pages
+  with body including:
+    transactionReference
+    merchant.entity = WORLDPAY_ENTITY
+    narrative.line1 = a short statement descriptor from config
+    value.currency and value.amount (minor units)
+    resultURLs (must point to our app):
+      successURL = {APP_BASE_URL}/pay/success?ref={transactionReference}
+      pendingURL = {APP_BASE_URL}/pay/pending?ref={transactionReference}
+      failureURL = {APP_BASE_URL}/pay/failure?ref={transactionReference}
+      errorURL = {APP_BASE_URL}/pay/error?ref={transactionReference}
+      cancelURL = {APP_BASE_URL}/pay/cancel?ref={transactionReference}
+      expiryURL = {APP_BASE_URL}/pay/expiry?ref={transactionReference}
+- Save returned worldpay session url and set PaymentAttempt = HPP_SESSION_CREATED
+- Return JSON: { url, transactionReference }
+
+B) GET /api/payments/status?ref=TRANSACTION_REFERENCE
+Return a small normalized status for the frontend:
+- PAID, PROCESSING, FAILED, CANCELLED, EXPIRED, ERROR, UNKNOWN
+This should map from PaymentAttempt status.
+Also return orderId and maybe a human-friendly message.
+
+C) POST /api/webhooks/worldpay
+This endpoint receives Worldpay webhook events.
+Behavior:
+- Parse JSON
+- Extract eventId, eventTimestamp, eventDetails.type, eventDetails.transactionReference
+- Idempotency: store eventId in WebhookEventLog; if already processed, return 200 immediately.
+- Find PaymentAttempt by transactionReference
+- Update statuses based on eventDetails.type:
+  sentForAuthorization => PROCESSING
+  authorized => AUTHORIZED (and optionally PAID if business considers this final)
+  sentForSettlement => PAID and set Order=PAID
+  refused => FAILED and set Order=PAYMENT_FAILED
+  cancelled => CANCELLED and set Order=CANCELLED
+  expired => EXPIRED
+  error => ERROR
+- Must respond HTTP 200 within 10 seconds
+- Ensure webhook handler is robust against missing attempt (log and 200)
+
+4) Frontend pages (user-friendly UX)
+Create these routes/pages:
+- /checkout (or existing): when user clicks Pay -> call POST /api/payments/worldpay/session -> redirect browser to returned url.
+
+- /pay/success: This is NOT final success. Show “Thanks — confirming your payment…”
+  Behavior: poll GET /api/payments/status?ref=... every 2-3 seconds for up to 60 seconds.
+  - If status becomes PAID -> show “Payment confirmed ✅” + link to order
+  - If status becomes FAILED/CANCELLED/EXPIRED/ERROR -> route to the appropriate page or render the correct message
+  - If still PROCESSING after timeout -> show “Still confirming. We’ll update your order shortly.” + link to order status.
+
+- /pay/pending: similar to success but messaging indicates pending; polls then falls back.
+
+- /pay/failure: show friendly decline copy + CTA to retry (back to checkout). Also fetch status once to display correct messaging.
+
+- /pay/error: show “We couldn’t confirm the payment completed” and check backend; if PAID then treat as confirmed, else offer retry/support.
+
+- /pay/cancel: show cancellation + retry.
+
+- /pay/expiry: show expired + restart payment.
+
+Do not show raw Worldpay codes to the user. Use simple categories.
+
+5) Testing hooks
+- Provide a simple way to simulate webhook events locally for dev (only in development):
+  e.g., POST /api/dev/simulate-worldpay-webhook that updates PaymentAttempt as if a webhook arrived.
+Make sure it’s disabled in production.
+
+6) Operational notes
+- Keep credentials server-side only.
+- Do not whitelist Worldpay domains in code.
+- Keep Accept and Content-Type headers matching the documented media type.
+
+Deliverables:
+- Implement the endpoints, pages, and minimal persistence layer (DB or in-memory).
+- Ensure flow works end-to-end locally: initiate session -> redirect (mock if necessary) -> simulate webhook -> success page confirms via polling.
+- Add concise README section: “Worldpay HPP Integration” with setup steps and env vars.
+
+Proceed to implement with minimal changes to existing architecture and reuse existing patterns in this repo.
